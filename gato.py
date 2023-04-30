@@ -67,22 +67,12 @@ class Nodo:
     def __init__(self, tablero, jugador_actual, ultimo_movimiento=None):
         self.tablero = tablero
         self.jugador_actual = jugador_actual
+        if jugador_actual.simbolo == "X":
+            self.oponente = Jugador("O")
+        else:
+            self.oponente = Jugador("X")
         self.ultimo_movimiento = ultimo_movimiento
         self.hijos = []
-
-    def calcular_valor(self):
-
-        ganador = self.tablero.es_ganador(self.jugador_actual)
-        empate = self.tablero.es_empate()
-
-        if ganador:
-            return 1
-        elif empate:
-            return 0
-        elif any(celda == " " for fila in self.tablero.tablero for celda in fila):
-            return None
-        else:
-            return -1
 
     def nodos_hijos(self):
         siguiente_jugador = Jugador(
@@ -98,46 +88,87 @@ class Nodo:
 
                     nuevo_tablero.actualizar(
                         fila, columna, self.jugador_actual)
-                    hijo = Nodo(nuevo_tablero, siguiente_jugador)
+                    hijo = Nodo(nuevo_tablero, siguiente_jugador,
+                                (fila, columna))
                     hijos.append(hijo)
 
         return hijos
 
-    def minimax(self, maximizando):
-        self.valor = self.calcular_valor()
-        if self.valor is not None:
-            return self.valor, None
+    # retorna el (valor del nodo, la jugada optima).
 
-        if maximizando:
-            mejor_valor = float('-inf')
-            mejor_movimiento = None
-            for hijo in self.nodos_hijos():
-                valor_hijo, _ = hijo.minimax(False)
-                if valor_hijo > mejor_valor:
-                    mejor_valor = valor_hijo
-                    mejor_movimiento = hijo
-            return mejor_valor, mejor_movimiento
+    def minimax(self):
 
-        else:
-            mejor_valor = float('inf')
-            mejor_movimiento = None
-            for hijo in self.nodos_hijos():
-                valor_hijo, _ = hijo.minimax(True)
-                if valor_hijo < mejor_valor:
-                    mejor_valor = valor_hijo
-                    mejor_movimiento = hijo
-            return mejor_valor, mejor_movimiento
+        # Chequeamos si es nodo final y retornmaos valor correspondiente.
 
-    def imprimir_nodo(self):
-        print(f"Jugador actual: {self.jugador.simbolo}")
+        if self.tablero.es_ganador(self.jugador_actual):
+            return 1, self.ultimo_movimiento
+        if self.tablero.es_ganador(self.oponente):
+            return -1, self.ultimo_movimiento
+        if self.tablero.es_empate():
+            return 0, self.ultimo_movimiento
+
+        # Cuando no es nodo final desarrollamos el arbol hasta llegar a los nodos finales.
+
+        nodos_hijos = self.nodos_hijos()
+
+        maximo_historico = -2
+        for hijo in nodos_hijos:
+            valor = hijo.minimax()[0]
+
+            if valor > maximo_historico:
+                maximo_historico = valor
+                proximo_nodo = hijo
+        return (maximo_historico, proximo_nodo.ultimo_movimiento)
+
+    def valor(self):
+
+        # Chequeamos si es nodo final y retornmaos valor correspondiente.
+
+        if self.tablero.es_ganador(self.jugador_actual):
+            return 1
+        if self.tablero.es_ganador(self.oponente):
+            return -1
+        if self.tablero.es_empate():
+            return 0
+
+        # Cuando no es nodo final desarrollamos el arbol hasta llegar a los nodos finales.
+        nodos_hijos = self.nodos_hijos()
+
+        minimo_historico = 2
+        for hijo in nodos_hijos:
+            valor = hijo.valor()
+
+            if valor < minimo_historico:
+                minimo_historico = valor
+
+        return - minimo_historico
+
+    def escoger(self):
+        nodos_hijos = self.nodos_hijos()
+
+        minimo_historico = 2
+        for hijo in nodos_hijos:
+            valor = hijo.valor()
+
+            if valor < minimo_historico:
+                minimo_historico = valor
+                proximo_nodo = hijo
+        return proximo_nodo.ultimo_movimiento
+
+    def imprimir_nodo(self, imprimir_hijos=True):
+        print(f"Jugador actual: {self.jugador_actual.simbolo}")
         print("Posición actual del tablero:")
         self.tablero.imprimir()
-        hijos = self.nodos_hijos()
 
-        print("Posiciones de los nodos hijos:")
-        for i, hijo in enumerate(hijos, start=1):
-            print(f"Hijo {i}:")
-            hijo.tablero.imprimir()
+        if imprimir_hijos:
+            hijos = self.nodos_hijos()
+
+            print("Posiciones de los nodos hijos:")
+            for i, hijo in enumerate(hijos, start=1):
+                print(f"Hijo {i}:")
+                hijo.tablero.imprimir()
+        else:
+            print("")
 
 # Corre que almacena el juego. Esta posee un tablero y dos jugadores. También pregunta si se desea
 # jugar contra otro jugador o contra la computadora
@@ -196,10 +227,16 @@ class JuegoGato:
                 if not movimiento_valido:
                     print(mensaje_error)
 
-            self.jugador_actual = self.jugador_o if self.jugador_actual == self.jugador_x else self.jugador_x
+            if (self.jugador_actual == self.jugador_x):
+                self.jugador_actual = self.jugador_o
+
+            else:
+                self.jugador_x
 
     def juego_contra_computadora(self):
+        Turno = 0
         while True:
+
             self.tablero.imprimir()
 
             if self.tablero.es_ganador(self.jugador_x):
@@ -213,6 +250,9 @@ class JuegoGato:
                 break
 
             if self.jugador_actual == self.jugador_x:
+                Turno += 1
+                print(
+                    f"Turno: {Turno}. Juega el player 1, con el simbolo {self.jugador_actual.simbolo}.")
                 movimiento_valido = False
                 while not movimiento_valido:
                     fila, columna = self.jugador_actual.realizar_movimiento()
@@ -222,15 +262,46 @@ class JuegoGato:
                     if not movimiento_valido:
                         print(mensaje_error)
             else:
+                Turno += 1
+                print(
+                    f"Turno: {Turno}. Juega la computadora con el simbolo {self.jugador_actual.simbolo}.")
                 nodo = Nodo(self.tablero, self.jugador_actual)
-                _, mejor_movimiento = nodo.minimax(True)
-                mejor_fila, mejor_columna = mejor_movimiento.ultimo_movimiento
+                mejor_movimiento = nodo.escoger()
+                mejor_fila, mejor_columna = mejor_movimiento
+
                 self.tablero.actualizar(
                     mejor_fila, mejor_columna, self.jugador_actual)
 
-            self.jugador_actual = self.jugador_o if self.jugador_actual == self.jugador_x else self.jugador_x
+            if self.jugador_actual.simbolo == self.jugador_x.simbolo:
+                self.jugador_actual = self.jugador_o
+
+            elif self.jugador_actual.simbolo == self.jugador_o.simbolo:
+                self.jugador_actual = self.jugador_x
+
+
+def test():
+    tablero = Tablero()
+    tablero.tablero = [
+        ["X", "O", " "],
+        [" ", " ", " "],
+        [" ", " ", " "]
+    ]
+    jugador = Jugador("X")
+    nodo = Nodo(tablero, jugador)
+
+    print(nodo.valor())
+
+    # Imprimir los nodos hijos utilizando el método imprimir_nodo de la clase Nodo
+
+    """hijos = nodo.nodos_hijos()
+    for i, hijo in enumerate(hijos, start=1):
+        print(f"Hijo {i}:")
+        hijo.imprimir_nodo(imprimir_hijos=False)
+
+    print(f"Fin testeo: {hijos}")"""
 
 
 if __name__ == "__main__":
     juego = JuegoGato()
+    # test()
     juego.jugar()
