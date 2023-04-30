@@ -1,5 +1,5 @@
+# backend.py
 # clase tablero. Es un tablero, ve si hay un ganador y se actualiza.
-
 class Tablero:
     def __init__(self):
         self.tablero = [[" " for _ in range(3)] for _ in range(3)]
@@ -231,7 +231,7 @@ class JuegoGato:
                 self.jugador_actual = self.jugador_o
 
             else:
-                self.jugador_actual = self.jugador_x
+                self.jugador_x
 
     def juego_contra_computadora(self):
         Turno = 0
