@@ -1,4 +1,6 @@
 # BotGato
-Programa del famoso juego gato que utiliza minimax para encontrar la mejor respuesta posible.
+Programa del famoso juego gato que utiliza el algoritmo minimax para encontrar la mejor respuesta posible.
 
-Falta implementar el juego contra el computador y la UI.
+Emplea python 3.11 o superior.
+
+Falta implementar la UI.
